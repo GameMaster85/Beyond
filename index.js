@@ -521,7 +521,7 @@ function discordHTMLSanitize(str) {
 	
 	return sanitizeHtml(workingtext, {
 		textFilter: function(text) {
-			return text.replace(/&quot;/g, '\'');
+			return text.replace(/&quot;/g, '\"');
 		}
 	});
 }
