@@ -566,7 +566,7 @@ var generateNarration = function (message, user, post, color, room){
 	
 	if (ICHook != false) {
 		ICHook.send(discordHTMLSanitize(post), {
-			username: 'Narrator ('+user.substring(0, 21);+')',
+			username: 'Narrator ('+user.substring(0, 21)+')',
 			split: true
 		})
 	};
