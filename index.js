@@ -519,7 +519,11 @@ function discordHTMLSanitize(str) {
 	workingtext = workingtext.replace(/(<\/i>|<i>)/g, '*'); // <i>/</i> to *
 	workingtext = workingtext.replace(/(<\/s>|<s>)/g, '~~'); // <s>/</s> to ~~*/
 	
-	return sanitizeHtml(workingtext, { textFilter: function(text) { return text.replace(/&quot;/g, '\''); } );
+	return sanitizeHtml(workingtext, {
+		textFilter: function(text) {
+			return text.replace(/&quot;/g, '\'');
+		}
+	});
 }
 
 var postalt = '  ܼ ';
