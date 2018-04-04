@@ -542,7 +542,7 @@ var generateOOCmessage = function (message, user, post, color, room){
 	
 	if (OOCHook != false) {
 		OOCHook.send(discordHTMLSanitize(post), {
-			username: user,
+			username: user.substring(0, 20),
 			split: true
 		})
 	}
@@ -566,7 +566,7 @@ var generateNarration = function (message, user, post, color, room){
 	
 	if (ICHook != false) {
 		ICHook.send(discordHTMLSanitize(post), {
-			username: 'Narrator ('+user+')',
+			username: 'Narrator ('+user.substring(0, 21);+')',
 			split: true
 		})
 	};
@@ -637,7 +637,7 @@ var generatePost = function (message, username, post, character, say, omit, unna
 				if (!omit){
 					if (ICHook != false) {
 						ICHook.send(discordHTMLSanitize(purepost), {
-							username: postalt+character.name+postalt,
+							username: postalt+character.name.substring(0, 24)+postalt,
 							avatarURL: 'http://'+inisettings.discord.servaddress+':'+http.address().port+'/faceicons/temp/'+hash+'.png',
 							split: true
 						})
@@ -646,7 +646,7 @@ var generatePost = function (message, username, post, character, say, omit, unna
 				else {
 					if (OOCHook != false) {
 						OOCHook.send(discordHTMLSanitize(purepost), {
-							username: postalt+character.name+postalt,
+							username: postalt+character.name.substring(0, 24)+postalt,
 							avatarURL: 'http://'+inisettings.discord.servaddress+':'+http.address().port+'/faceicons/temp/'+hash+'.png',
 							split: true
 						})
