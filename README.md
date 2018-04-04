@@ -1,7 +1,7 @@
 # Beyond: Cutting-Edge Edition
 A chat program for roleplaying, to support multiple characters, actions, and expressions.
 
-This version releases the locks of a short module list, allowing and having large functionality which is mostly maintained by (GameMaster85)[https://github.com/GameMaster85]. Features of the master branch will be merged often, but this branch will have extra stuff that might not be as "light" as the normal one. This version will try to merge as much as possible with the master version.
+This version releases the locks of a short module list, allowing and having large functionality which is mostly maintained by [GameMaster85](https://github.com/GameMaster85). Features of the master branch will be merged often, but this branch will have extra stuff that might not be as "light" as the normal one. This version will try to merge as much as possible with the master version.
 
 Set up is fairly simple (though it will require node and npm to work); just:
 
