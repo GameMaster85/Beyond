@@ -9,6 +9,12 @@ var sanitizeHtml = require('sanitize-html');
 var database = require('./database');
 var cp = require('child_process');
 
+var ini = require('ini');
+var discord = require('discord.js');
+var jimp = require("jimp");
+var md5File = require('md5-file');
+var path = require('path');
+
 //Set up the search request for the logs
 app.get('/logs/search/:search', function(req, res) {
 	var stringToFind = req.params.search;
@@ -80,12 +86,48 @@ try{
 	fs.writeFileSync('worldinfo.html', worldinfo);
 }
 
+// INI STUFF
+
+var defaultini = {};
+defaultini["discord"] = {};
+defaultini["discord"]["servaddress"] = '0.0.0.0';
+defaultini["discord"]["oochook"] = {};
+defaultini["discord"]["oochook"]["id"] = '0';
+defaultini["discord"]["oochook"]["token"] = '0';
+defaultini["discord"]["ichook"] = {};
+defaultini["discord"]["ichook"]["id"] = '0';
+defaultini["discord"]["ichook"]["token"] = '0';
+
+var inisettings;
+try{
+	inisettings = ini.parse(fs.readFileSync('./config.ini', 'utf8'));	
+} catch(e) {
+	inisettings = defaultini;
+	fs.writeFileSync('./config.ini', ini.stringify(inisettings, []));
+}
+
+// DISCORD INIT
+
+var OOCHook;
+var ICHook;
+
+if (inisettings.discord.oochook.id != '0') {
+	OOCHook = new discord.WebhookClient(inisettings.discord.oochook.id, inisettings.discord.oochook.token);
+}
+else { OOCHook = false }
+
+if (inisettings.discord.ichook.id != '0') {
+	ICHook = new discord.WebhookClient(inisettings.discord.ichook.id, inisettings.discord.ichook.token);
+}
+else { ICHook = false }
+
 var postnum = 1;
 if(!fs.existsSync('./logs')){fs.mkdirSync('./logs');}
 if(!fs.existsSync('./logs/postid.txt')){fs.writeFile('./logs/postid.txt', 1);} else {fs.readFile('./logs/postid.txt','utf8',function(err,num){postnum=+num;});}
 
 var iconnum = 0;
 if(!fs.existsSync('./faceicons')){fs.mkdirSync('./faceicons');}
+if(!fs.existsSync('./faceicons/temp')){fs.mkdirSync('./faceicons/temp');}
 
 if(!fs.existsSync('./faceicons/num.txt')){fs.writeFile('./faceicons/num.txt', 0);} else {fs.readFile('./faceicons/num.txt','utf8',function(err,num){iconnum=+num;});}
 if(!fs.existsSync('./faceicons/img_trans.gif')){fs.writeFile('./faceicons/img_trans.gif', 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');}
@@ -447,12 +489,48 @@ var deleteLog = function(id, room){
 	}
 };
 
-var generateOOCmessage = function (message, username, post, color, room){
+// DISCORD FACE ICON GENERATION
+
+function eraseTempFI() {
+	var directory = './faceicons/temp/'
+	fs.readdir(directory, (err, files) => {
+	  if (err) throw err;
+
+	  for (const file of files) {
+		fs.unlink(path.join(directory, file), err => {
+		  if (err) throw err;
+		});
+	  }
+	});
+}
+eraseTempFI()
+
+// DISCORD MARKUP SANITIZE
+
+function discordHTMLSanitize(str) {
+	var workingtext = str;
+								
+	// <a href> Formatting
+	workingtext = workingtext.replace(/<a href="(.*?)" .*?>(.*?)<\/a>/g, '__$2__ ($1)');
+				
+	// Single Markdown Formatting
+	workingtext = workingtext.replace(/(<\/b>|<b>)/g, '**'); // <b>/</b> to **
+	workingtext = workingtext.replace(/(<\/u>|<u>)/g, '__'); // <u>/</u> to __
+	workingtext = workingtext.replace(/(<\/i>|<i>)/g, '*'); // <i>/</i> to *
+	workingtext = workingtext.replace(/(<\/s>|<s>)/g, '~~'); // <s>/</s> to ~~*/
+	
+	return sanitizeHtml(workingtext);
+}
+
+var postalt = '  ܼ ';
+var oldhash = '';
+
+var generateOOCmessage = function (message, user, post, color, room){
 	var htm = logfiles[room].htm;
 	message.appendChild(htm.createTextNode("( "));//open parentheses
 
 	cur = htm.createElement('b');//create username
-	cur.textContent = username+': ';
+	cur.textContent = user+': ';
 	message.appendChild(cur);
 
 	cur = htm.createElement('span');//create post
@@ -461,6 +539,14 @@ var generateOOCmessage = function (message, username, post, color, room){
 	message.appendChild(cur);
 
 	message.appendChild(htm.createTextNode(" )"));//close parentheses
+	
+	if (OOCHook != false) {
+		OOCHook.send(discordHTMLSanitize(post), {
+			username: user,
+			split: true
+		})
+	}
+	
 };
 
 var generateOOClog = function (message, username, post, room){
@@ -469,7 +555,7 @@ var generateOOClog = function (message, username, post, room){
 	message.appendChild(cur);
 };
 
-var generateNarration = function (message, username, post, color, room){
+var generateNarration = function (message, user, post, color, room){
 	var htm = logfiles[room].htm;
 	var cur = htm.createElement('br');
 	message.appendChild(cur);
@@ -477,6 +563,14 @@ var generateNarration = function (message, username, post, color, room){
 	cur.style.color = color;
 	cur.innerHTML = post;
 	message.appendChild(cur);
+	
+	if (ICHook != false) {
+		ICHook.send(discordHTMLSanitize(post), {
+			username: 'Narrator ('+user+')',
+			split: true
+		})
+	};
+	
 }
 
 var generatePost = function (message, username, post, character, say, omit, unnamed, room){
@@ -513,12 +607,15 @@ var generatePost = function (message, username, post, character, say, omit, unna
 	cur.style.display = unnamed ? 'none' : 'initial';
 	message.appendChild(cur);
 	//post section
+	var purepost; // purepost will be the specific post shown to discord.
 	cur = htm.createElement('span');
 	cur.style.color = character.color;
 	if(say){
 		cur.innerHTML = '"'+post+'"';
+		purepost = '"'+post+'"';
 	} else {
 		cur.innerHTML = post;
+		purepost = '*'+(unnamed ? '' : character.name+' ')+post+'*'
 	}
 	if(omit){
 		var om = htm.createElement('b');
@@ -526,6 +623,47 @@ var generatePost = function (message, username, post, character, say, omit, unna
 		cur.appendChild(om);
 	}
 	message.appendChild(cur);
+
+	jimp.read("./faceicons/"+character.icon+".png").then((fi) => {
+    var img = fi.crop( character.icpos.left, character.icpos.top, 50, 50 );
+	img.write("./faceicons/tempfi.png", () => {
+		md5File('./faceicons/tempfi.png', (err, hash) => {
+			if (err) throw err;
+			eraseTempFI()
+			fs.rename('./faceicons/tempfi.png', './faceicons/temp/'+hash+'.png', (err) => {
+				
+				if ( err ) { console.log('ERROR: ' + err); return; }
+				
+				if (!omit){
+					if (ICHook != false) {
+						ICHook.send(discordHTMLSanitize(purepost), {
+							username: postalt+character.name+postalt,
+							avatarURL: 'http://'+inisettings.discord.servaddress+':'+http.address().port+'/faceicons/temp/'+hash+'.png',
+							split: true
+						})
+					}
+				}
+				else {
+					if (OOCHook != false) {
+						OOCHook.send(discordHTMLSanitize(purepost), {
+							username: postalt+character.name+postalt,
+							avatarURL: 'http://'+inisettings.discord.servaddress+':'+http.address().port+'/faceicons/temp/'+hash+'.png',
+							split: true
+						})
+					}
+				};
+			
+				if (postalt != '  ܼ ') { postalt = '  ܼ ' } else { postalt = '  ݂ ' } // Alternating characters that look very similar. This will fool discord into thinking each post is different and generate a new FI for each of them. (Though, it won't fool it a lot, especially after refreshing the discordapp.)
+				
+			});			
+		});
+	});
+	
+	return;
+	}).catch(function (err) {
+		console.error(err);
+	});
+	
 };
 
 var processHTML = function(message){
