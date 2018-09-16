@@ -9,6 +9,8 @@ var sanitizeHtml = require('sanitize-html');
 var database = require('./database');
 var cp = require('child_process');
 
+const lineBreakHelper = /\r\n?|\n(?!([^<]+)?(<\/style>|<\/script>))/g;
+
 //Set up the search request for the logs
 app.get('/logs/search/:search', function(req, res) {
 	var stringToFind = req.params.search;
@@ -82,18 +84,18 @@ try{
 
 var postnum = 1;
 if(!fs.existsSync('./logs')){fs.mkdirSync('./logs');}
-if(!fs.existsSync('./logs/postid.txt')){fs.writeFile('./logs/postid.txt', 1);} else {fs.readFile('./logs/postid.txt','utf8',function(err,num){postnum=+num;});}
+if(!fs.existsSync('./logs/postid.txt')){fs.writeFile('./logs/postid.txt', 1, function(err){if(err){console.log(err);}});} else {fs.readFile('./logs/postid.txt','utf8',function(err,num){postnum=+num;});}
 
 var iconnum = 0;
 if(!fs.existsSync('./faceicons')){fs.mkdirSync('./faceicons');}
 
-if(!fs.existsSync('./faceicons/num.txt')){fs.writeFile('./faceicons/num.txt', 0);} else {fs.readFile('./faceicons/num.txt','utf8',function(err,num){iconnum=+num;});}
-if(!fs.existsSync('./faceicons/img_trans.gif')){fs.writeFile('./faceicons/img_trans.gif', 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');}
-if(!fs.existsSync('./faceicons/img_trans.png')){fs.writeFile('./faceicons/img_trans.png', 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');}
-if(!fs.existsSync('./faceicons/favicon.png')){fs.writeFile('./faceicons/favicon.png', 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4gQBDzgSNR5bAgAAAA9QTFRF////AAAAz7E34sE8/9VD2dvC6gAAAAF0Uk5TAEDm2GYAAAABYktHRACIBR1IAAAAmklEQVQoz22S0Q2FMAhFGcHWCQQXMHYBk+4/0ytQoCXvfp5Q5NwIJQKS+nKQUybonCC19Z0MoBuEHAw+XSbkWQATascCoOLbvw1Q6/sED0C9HZw8MB76UhkY4LKPyMAAOA+jrqejhUqyvSDZGgjbYsBtZx+LbYFku/UhFzwJ/O/jzn2ELWofYUuzD7NF68PjfZh+6oOayuXf4QciHi6tIdMmKQAAAABJRU5ErkJggg==', 'base64');}
-if(!fs.existsSync('./faceicons/notice.png')){fs.writeFile('./faceicons/notice.png', 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB+IEARACC2OmyfYAAAAPUExURf///wAAAM83O+I8QP9DTK3GnwYAAAABdFJOUwBA5thmAAAAAWJLR0QAiAUdSAAAAJpJREFUKM9tktENhTAIRRnB1gkEFzB2AZPuP9MrUKAl736eUOTcCCUCkvpykFMm6JwgtfWdDKAbhBwMPl0m5FkAE2rHAqDi278NUOv7BA9AvR2cPDAe+lIZGOCyj8jAADgPo66no4VKsr0g2RoI22LAbWcfi22BZLv1IRc8Cfzv4859hC1qH2FLsw+zRevD432YfuqDmsrl3+EHIh4urSHTJikAAAAASUVORK5CYII=', 'base64');}
-if(!fs.existsSync('./faceicons/box.png')){fs.writeFile('./faceicons/box.png', 'iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAADXUAAA11AFeZeUIAAABA0lEQVRoge2asYoCMRRFz4i4EUR2FiwUG9n//5SttdVWS1enmy2SgThMkWIhF7kHwp3p7uGle2nuhJ43YJ7yF3iMjjIBWOY5iDyAG3BNeatSr5xP4CvLNhe5AhfgnFKZLbBL2TAxkTNwBE5V6pVzADqgJ16tdixyAU4rup86/cq4E56kSRCvVjerW+n/sIgaFlHDImpYRA2LqGERNSyihkXUsIgaFlHDImpYRA2LqGERNSyihkXUsIgaFlHDImoMe/ZAfA6xBQ5pj63MN7AHNsAaWAwiS+LifUd8UdBUqVfOnleRMDWRPv0rs8nO5ESa7FuZ9ei8TKTNsqtSr5wFseuQH3+zPCfjk5ftQQAAAABJRU5ErkJggg==', 'base64');}
-if(!fs.existsSync('./faceicons/handle.png')){fs.writeFile('./faceicons/handle.png', 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAADXUAAA11AFeZeUIAAAAB3RJTUUH4QIUDyUsZQAKFgAAAMpJREFUOMvt1DtrAlEQxfE/+/28IgbiVNaCsIZAHoVv10JFSUifLgckWMwntBlhsVlfjeDpLgw/zp1i4JFHKuNS5lLn8M5uYO6An5uALu2AGjC4GnRpC9SBQTIrrgJd+geawCiZFS59XwwG1ghs6tIG6F4ExjePsRxYng0G1gTmgS0DWyWz97NAl/5KO+sH9hrYW3k2O3Fnz8Akmq0DWxywaF8NRrMGMEtm48B6wFcy+4iZX+CpEnRpAbQCG7qUl7CXEtYGPu/nWOwBIGxhMKJusmIAAAAASUVORK5CYII=', 'base64');}
+if(!fs.existsSync('./faceicons/num.txt')){fs.writeFile('./faceicons/num.txt', 0, function(err){if(err){console.log(err);}});} else {fs.readFile('./faceicons/num.txt','utf8',function(err,num){iconnum=+num;});}
+if(!fs.existsSync('./faceicons/img_trans.gif')){fs.writeFile('./faceicons/img_trans.gif', 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64', function(err){if(err){console.log(err);}});}
+if(!fs.existsSync('./faceicons/img_trans.png')){fs.writeFile('./faceicons/img_trans.png', 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64', function(err){if(err){console.log(err);}});}
+if(!fs.existsSync('./faceicons/favicon.png')){fs.writeFile('./faceicons/favicon.png', 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4gQBDzgSNR5bAgAAAA9QTFRF////AAAAz7E34sE8/9VD2dvC6gAAAAF0Uk5TAEDm2GYAAAABYktHRACIBR1IAAAAmklEQVQoz22S0Q2FMAhFGcHWCQQXMHYBk+4/0ytQoCXvfp5Q5NwIJQKS+nKQUybonCC19Z0MoBuEHAw+XSbkWQATascCoOLbvw1Q6/sED0C9HZw8MB76UhkY4LKPyMAAOA+jrqejhUqyvSDZGgjbYsBtZx+LbYFku/UhFzwJ/O/jzn2ELWofYUuzD7NF68PjfZh+6oOayuXf4QciHi6tIdMmKQAAAABJRU5ErkJggg==', 'base64', function(err){if(err){console.log(err);}});}
+if(!fs.existsSync('./faceicons/notice.png')){fs.writeFile('./faceicons/notice.png', 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB+IEARACC2OmyfYAAAAPUExURf///wAAAM83O+I8QP9DTK3GnwYAAAABdFJOUwBA5thmAAAAAWJLR0QAiAUdSAAAAJpJREFUKM9tktENhTAIRRnB1gkEFzB2AZPuP9MrUKAl736eUOTcCCUCkvpykFMm6JwgtfWdDKAbhBwMPl0m5FkAE2rHAqDi278NUOv7BA9AvR2cPDAe+lIZGOCyj8jAADgPo66no4VKsr0g2RoI22LAbWcfi22BZLv1IRc8Cfzv4859hC1qH2FLsw+zRevD432YfuqDmsrl3+EHIh4urSHTJikAAAAASUVORK5CYII=', 'base64', function(err){if(err){console.log(err);}});}
+if(!fs.existsSync('./faceicons/box.png')){fs.writeFile('./faceicons/box.png', 'iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAADXUAAA11AFeZeUIAAABA0lEQVRoge2asYoCMRRFz4i4EUR2FiwUG9n//5SttdVWS1enmy2SgThMkWIhF7kHwp3p7uGle2nuhJ43YJ7yF3iMjjIBWOY5iDyAG3BNeatSr5xP4CvLNhe5AhfgnFKZLbBL2TAxkTNwBE5V6pVzADqgJ16tdixyAU4rup86/cq4E56kSRCvVjerW+n/sIgaFlHDImpYRA2LqGERNSyihkXUsIgaFlHDImpYRA2LqGERNSyihkXUsIgaFlHDImoMe/ZAfA6xBQ5pj63MN7AHNsAaWAwiS+LifUd8UdBUqVfOnleRMDWRPv0rs8nO5ESa7FuZ9ei8TKTNsqtSr5wFseuQH3+zPCfjk5ftQQAAAABJRU5ErkJggg==', 'base64', function(err){if(err){console.log(err);}});}
+if(!fs.existsSync('./faceicons/handle.png')){fs.writeFile('./faceicons/handle.png', 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAADXUAAA11AFeZeUIAAAAB3RJTUUH4QIUDyUsZQAKFgAAAMpJREFUOMvt1DtrAlEQxfE/+/28IgbiVNaCsIZAHoVv10JFSUifLgckWMwntBlhsVlfjeDpLgw/zp1i4JFHKuNS5lLn8M5uYO6An5uALu2AGjC4GnRpC9SBQTIrrgJd+geawCiZFS59XwwG1ghs6tIG6F4ExjePsRxYng0G1gTmgS0DWyWz97NAl/5KO+sH9hrYW3k2O3Fnz8Akmq0DWxywaF8NRrMGMEtm48B6wFcy+4iZX+CpEnRpAbQCG7qUl7CXEtYGPu/nWOwBIGxhMKJusmIAAAAASUVORK5CYII=', 'base64', function(err){if(err){console.log(err);}});}
 
 try{//make the saves folder if it doesn't exist BEFORE proceeding.
 	fs.mkdirSync('./saves');
@@ -103,7 +105,7 @@ try{//make the saves folder if it doesn't exist BEFORE proceeding.
 
 try{
 	fs.mkdirSync('./characters');
-	fs.writeFile('./characters/charindex.json', JSON.stringify({}));
+	fs.writeFile('./characters/charindex.json', JSON.stringify({}), function(err){if(err){console.log(err);}});
 } catch(e){
 	if(e.code != 'EEXIST'){throw e;}
 }
@@ -134,6 +136,18 @@ app.get('/idle.js', function(req, res){
 	res.sendFile(__dirname + '/idle.js');
 });
 
+app.get('/client.js', function(req, res){
+	res.sendFile(__dirname + '/client.js');
+});
+
+app.get('/md5.js', function(req, res){
+	res.sendFile(__dirname + '/md5.js');
+});
+
+app.get('/interactivelogs.js', function(req, res){
+	res.sendFile(__dirname + '/interactivelogs.js');
+});
+
 app.get('/database', function(req, res){
 	res.sendFile(__dirname + '/database.html');
 });
@@ -148,6 +162,53 @@ app.get('/database/*', function(req, res){
 	}
 });
 
+var setuplogs = function (files, name){
+	var ret = '<head><title>Logs ('+(serversettings.title || 'Beyond')+')</title><link rel="icon" href="/faceicons/favicon.png"></head><script type="text/javascript">var togglevis = function(id){var e = document.getElementById(id); e.style.display = e.style.display=="none" ? "block" : "none";};</script><body style="background-color:black;">';
+	var years = {};
+	var months = {};
+	var currentyear = (new Date()).getFullYear();
+	files.forEach(function(file, index){
+		if(file.endsWith('.html')){//make a separate header for each month, THEN worry about collapsibility
+			var month = file.substring(0, 7);
+			var year = month.split('_')[0];
+			if(!months[month]){
+				months[month] = true;
+				ret += '</div>';//close previous month if applicable
+				if(!years[year]){
+					years[year] = true;
+					ret += '</div>';//close previous year if applicable
+					ret += '<h1 style="color: white; cursor: pointer; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;" onclick="togglevis(\''+year+'\')">'+year+'</h1>';
+					if(year == currentyear){
+						ret += '<div id='+year+' style="display: block;">';
+					} else {
+						ret += '<div id='+year+' style="display: none;">';
+					}
+				}
+				var monthname = monthenum[month.split('_')[1]-1]+' '+month.split('_')[0];
+				ret += '<h2 style="color: white; cursor: pointer; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;" onclick="togglevis(\''+month+'\')">'+monthname+'</h2>';
+				//Make a div starting here and ending when we hit the next month or the end
+				ret += '<div id='+month+' style="display: none;">';
+			}
+			if(name){
+				ret += '<a href="/logs/'+name+'/'+file+'" style="color:blue;">'+file.split('.')[0]+'</a>';
+				ret += ' <span style="color:white;">(<a href="/interactivelogs/'+name+'/'+file+'" style="color:blue;">Interactive</a>)</span><br><br>';
+			} else {
+				ret += '<a href="/logs/'+file+'" style="color:blue;">'+file.split('.')[0]+'</a>';
+				ret += ' <span style="color:white;">(<a href="/interactivelogs/'+file+'" style="color:blue;">Interactive</a>)</span><br><br>';
+			}
+		}
+	});
+	//Code for sending Search requests and receiving the results go here.
+	if(name){
+		ret += '</div><script>var searchLogs = function() {var searchTerm = document.getElementById(\'txtSearch\').value; window.open(\'/logs/'+name+'/search/\' + encodeURIComponent(searchTerm));};</script>';
+	} else {
+		ret += '</div></div><script>var searchLogs = function() {var searchTerm = document.getElementById(\'txtSearch\').value; window.open(\'/logs/search/\' + encodeURIComponent(searchTerm));};</script>';
+	}
+	ret += '<form onsubmit=\'searchLogs()\'><span style="color:white;">Search Logs:</span><input type=\'text\' id=\'txtSearch\'></form><br /><button type=\'button\' onclick=\'searchLogs()\'>Search</button>';
+	ret += '</body>';
+	return ret;
+};
+
 app.get('/logs/:name', function(req, res){
 	var name = req.params.name;
 	if(name.endsWith('.html')){
@@ -155,26 +216,7 @@ app.get('/logs/:name', function(req, res){
 	} else {
 		fs.readdir('./logs/'+name, function(err, files){
 			if(!err){
-				var ret = '<head><title>Logs ('+(serversettings.title || 'Beyond')+')</title><link rel="icon" href="/faceicons/favicon.png"></head><script type="text/javascript">var togglevis = function(id){var e = document.getElementById(id); e.style.display = e.style.display=="none" ? "block" : "none";};</script><body style="background-color:black;">';
-				var months = {};
-				files.forEach(function(file, index){
-					if(file.endsWith('.html')){//make a separate header for each month, THEN worry about collapsibility
-						var month = file.substring(0, 7);
-						if(!months[month]){
-							months[month] = true;
-							ret += '</div>';
-							var monthname = monthenum[month.split('_')[1]-1]+' '+month.split('_')[0];
-							ret += '<h2 style="color: white; cursor: pointer; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;" onclick="togglevis(\''+month+'\')">'+monthname+'</h2>';
-							//Make a div starting here and ending when we hit the next month or the end
-							ret += '<div id='+month+' style="display: none;">';
-						}
-						ret += '<a href="/logs/'+name+'/'+file+'" style="color:blue;">'+file.split('.')[0]+'</a><br><br>';
-					}
-				});
-				//Code for sending Search requests and receiving the results go here.
-				ret += '</div><script>var searchLogs = function() {var searchTerm = document.getElementById(\'txtSearch\').value; window.open(\'/logs/'+name+'/search/\' + searchTerm);};</script>';
-				ret += '<form onsubmit=\'searchLogs()\'><span style="color:white;">Search Logs:</span><input type=\'text\' id=\'txtSearch\'></form><br /><button type=\'button\' onclick=\'searchLogs()\'>Search</button>';
-				ret += '</body>';
+				var ret = setuplogs(files, name);
 				res.send(ret);
 			} else {
 				res.send(err);
@@ -240,30 +282,56 @@ var monthenum = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
 app.get('/logs', function(req, res){
 	fs.readdir('./logs', function(err, files){
 		if(!err){
-			var ret = '<head><title>Logs ('+(serversettings.title || 'Beyond')+')</title><link rel="icon" href="/faceicons/favicon.png"></head><script type="text/javascript">var togglevis = function(id){var e = document.getElementById(id); e.style.display = e.style.display=="none" ? "block" : "none";};</script><body style="background-color:black;">';
-			var months = {};
-			files.forEach(function(file, index){
-				if(file.endsWith('.html')){//make a separate header for each month, THEN worry about collapsibility
-					var month = file.substring(0, 7);
-					if(!months[month]){
-						months[month] = true;
-						ret += '</div>';
-						var monthname = monthenum[month.split('_')[1]-1]+' '+month.split('_')[0];
-						ret += '<h2 style="color: white; cursor: pointer; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;" onclick="togglevis(\''+month+'\')">'+monthname+'</h2>';
-						//Make a div starting here and ending when we hit the next month or the end
-						ret += '<div id='+month+' style="display: none;">';
-					}
-					ret += '<a href="/logs/'+file+'" style="color:blue;">'+file.split('.')[0]+'</a><br><br>';
-				}
-			});
-			//Code for sending Search requests and receiving the results go here.
-			ret += '</div><script>var searchLogs = function() {var searchTerm = document.getElementById(\'txtSearch\').value; window.open(\'/logs/search/\' + searchTerm);};</script>';
-			ret += '<form onsubmit=\'searchLogs()\'><span style="color:white;">Search Logs:</span><input type=\'text\' id=\'txtSearch\'></form><br /><button type=\'button\' onclick=\'searchLogs()\'>Search</button>';
-			ret += '</body>';
+			var ret = setuplogs(files, null);
 			res.send(ret);
 		} else {
 			res.send(err);
 		}
+	});
+});
+
+app.get('/interactivelogs/:logfile', function(req, res){
+	fs.readdir('./logs', function(err, files){
+		if(err){res.send(err); return;}
+		//files are already in chronological order, but we need to prune ones that aren't html files.
+		//The files will all be sorted, but we can't guarantee someone didn't name a room with something that puts it before or inside the list.
+		var first = 0;
+		for(var i=files.length-1; i>=0; i--){
+			if(!files[i].endsWith('.html')){
+				files.splice(i, 1);
+				if(first){//if we remove after finding the index, we need to shift accordingly.
+					first--;
+				}
+			} else if(files[i] == req.params.logfile){
+				first = i;
+			}
+		}
+		var ret = '<head><title>Logs ('+(serversettings.title || 'Beyond')+')</title><link rel="icon" href="/faceicons/favicon.png"></head><body style="background-color:black;margin:0px;">';
+		ret += '<div align="center" id="outerc" data-logfile-start='+first+' data-logfile-list='+files+'></div>';
+		ret += '</body><script src="/interactivelogs.js"></script>';
+		res.send(ret);
+	});
+});
+
+app.get('/interactivelogs/:name/:logfile', function(req, res){
+	var name = req.params.name;
+	fs.readdir('./logs/'+name, function(err, files){
+		if(err){res.send(err); return;}
+		var first = 0;
+		for(var i=files.length-1; i>=0; i--){
+			if(!files[i].endsWith('.html')){
+				files.splice(i, 1);
+				if(first){
+					first--;
+				}
+			} else if(files[i] == req.params.logfile){
+				first = i;
+			}
+		}
+		var ret = '<head><title>Logs ('+(serversettings.title || 'Beyond')+')</title><link rel="icon" href="/faceicons/favicon.png"></head><body style="background-color:black;margin:0px;">';
+		ret += '<div align="center" id="outerc" data-logfile-start='+first+' data-logfile-list='+files+'></div>';
+		ret += '</body><script src="/interactivelogs.js"></script>';
+		res.send(ret);
 	});
 });
 
@@ -272,7 +340,7 @@ app.use('/faceicons', express.static('./faceicons'));
 var openLog = function (logfile, room){
 	try{
 		fs.accessSync(logfile, fs.R_OK | fs.W_OK);
-		logfiles[room] = {lname: logfile, htm: jsdom.jsdom(fs.readFileSync(logfile, 'utf8'))};
+		logfiles[room] = {lname: logfile, htm: jsdom.jsdom(fs.readFileSync(logfile, 'utf8')), dirty: true};
 	} catch(e){//today's logs don't exist, make them!
 		//this won't change, so just making it a static string (albeit a long one) is more effiicient.
 		var style = '<style>body{background-color: black; margin: 0 0 0 0; color: white;} div{display: block; float: left; height: auto; width: 100%;} div.action, div.log, div.narration{font-weight: bold;} div.narration{text-align: center;} div.narration span.timestamp{position: absolute; left: 0;} span.timestamp {font-weight: normal; font-family: monospace; color:#d3d3d3} .IC{} .OOC{} .deleted{}</style>';
@@ -308,7 +376,7 @@ openLog(logfile, '0');
 
 var userdefaults = {
 	settings: {
-		textcolor: 'white',
+		textcolor: '#ffffff',
 		characterIDs: 0,
 		dice: [],
 		rooms: {},
@@ -322,7 +390,14 @@ var userdefaults = {
 var toLog = function (message, room){
 	var today = new Date();
 	//only use logfiles[room].htm after this check
-	if(!logfiles[room] || logday(today, room) != logfiles[room].lname){//file unopened or from yesterday
+	if(!logfiles[room]){//file unopened
+		openLog(logday(today, room), room);
+	} else if(logday(today, room) != logfiles[room].lname){//file from yesterday
+		if(!logfiles[room].dirty){//room has had no dirtying posts
+			fs.unlink(logfiles[room].lname, function(err){
+				if(err){console.log(err);}
+			});//no real harm if it fails at this point as we'll no longer write to it.
+		}
 		openLog(logday(today, room), room);
 	}
 	var htm = logfiles[room].htm;//the file has been opened or created by this point.
@@ -337,6 +412,7 @@ var toLog = function (message, room){
 	ts.textContent = '['+message.username+' '+today.toLocaleString('en-us', {hour:'2-digit',minute:'2-digit',second:'2-digit'})+']';
 	logmsg.appendChild(ts);
 	var classparam = message.className.split(" ")[1];
+	if(!logfiles[room].dirty && classparam != 'log'){logfiles[room].dirty = true;}//posts other than logins are present and this hasn't been set yet.
 	switch(classparam){
 		case 'message':
 			generateOOCmessage(logmsg, message.username, message.post, message.color, room);
@@ -352,6 +428,9 @@ var toLog = function (message, room){
 			break;
 		case 'narration':
 			generateNarration(logmsg, message.username, message.post, message.color, room);
+			break;
+		case 'dice':
+			generateDice(logmsg, message.username, message.post, message.color, room);
 	}
 	htm.body.appendChild(logmsg);
 	var br = htm.createElement('br');
@@ -477,7 +556,15 @@ var generateNarration = function (message, username, post, color, room){
 	cur.style.color = color;
 	cur.innerHTML = post;
 	message.appendChild(cur);
-}
+};
+
+var generateDice = function (message, username, post, color, room){
+	var htm = logfiles[room].htm;
+	cur = htm.createElement('b');//should be bolded for consistency
+	cur.style.color = color;
+	cur.textContent = ' '+post;
+	message.appendChild(cur);
+};
 
 var generatePost = function (message, username, post, character, say, omit, unnamed, room){
 	var htm = logfiles[room].htm;
@@ -533,7 +620,7 @@ var processHTML = function(message){
 	message = message.replace(/(\s|^)(https?:\/\/\S+)/ig, "$1<a href=\"$2\" target=\"_blank\">$2</a>");
 	message = message.replace(/\r\n?|\n(?!([^<]+)?>)/g, "<br />");
 	if(test){//we skip it if we don't even find any tags (prior to potentially adding them ourselves)
-		message = sanitizeHtml(message, {allowedTags: ['a', 'b', 'br', 'em', 'font', 'i', 's', 'span', 'strong', 'sup', 'sub', 'u'],
+		message = sanitizeHtml(message, {allowedTags: ['a', 'b', 'br', 'em', 'font', 'hr', 'i', 's', 'span', 'strong', 'sup', 'sub', 'u'],
 		allowedAttributes: {
 			'a': ['href', 'target'],
 			'span': ['style'],
@@ -562,6 +649,9 @@ var removePlayer = function(username, socketroom){
 		delete users[username];
 		delete playercheck[username];
 		console.log(username+' has disconnected.');
+	}
+	if(socketroom != '0' && users[username] && users[username]['0'] && users[username]['0'].rooms[socketroom]){//don't remove from playerlist if main room is connected.
+		return;
 	}
 	if(playerlist[socketroom]){
 		if(playerlist[socketroom][username]){
@@ -751,7 +841,7 @@ var commands = {//console command list, formatted this way for convenience.
 						if (!playerlist.hasOwnProperty(room)) continue;
 						if(playerlist[room][name]){//any room where the user is connected
 							playerlist[room][name].permissions = level;
-							io.to(room).emit('PlayerList', playerlist[room]);
+							io.to(room).emit('PlayerList', playerlist[room], room);
 						}
 					}
 					if(playercheck[name]){
@@ -787,6 +877,13 @@ var commands = {//console command list, formatted this way for convenience.
 		});
 	},
 	"Shutdown": function(name){//Self-explanatory.
+		Object.keys(logfiles).forEach(function(room){
+			if(!logfiles[room].dirty){//room has had no dirtying posts
+				fs.unlink(logfiles[room].lname, function(err){
+					if(err){console.log(err);}
+				});//no real harm if it fails at this point as we'll no longer write to it.
+			}
+		});
 		console.log("Shutting down now.");
 		process.exit();
 	},
@@ -872,7 +969,7 @@ var saveFile = function(filename, data, socket, username){
 
 var adminLog = function(username, command, target){
 	var today = new Date();
-	adminlogs+='['+today.toLocaleString('en-us', {hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] '+username+' used the '+command+' command';
+	adminlogs+='['+monthenum[today.getMonth()]+' '+today.getFullYear()+' '+today.toLocaleString('en-us', {hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] '+username+' used the '+command+' command';
 	if(target){adminlogs+=' on '+target+'.\r\n';} else {adminlogs+='.\r\n';}
 	fs.writeFile('adminlogs.txt', adminlogs, function(err){if(err){console.log(err);} else {}});
 };
@@ -897,6 +994,29 @@ var CheckUser = function(username, minimumPermission, muteusable, socket){
 	return true;//If we're here, username is present, muteusable is true (the command can be used even when muted), and it requires no permissions.
 };
 
+var Roomer = function(socket, user, room, permissions, join){
+	if(join){
+		if(!playerlist[room]){playerlist[room]={};}
+		playerlist[room][user] = {permissions: permissions};
+		socket.join(room);
+		io.to(room).emit('PlayerList', playerlist[room], room);
+	} else {
+		if(playerlist[room]){
+			if(playerlist[room][user]){
+				delete playerlist[room][user];
+				io.to(room).emit('PlayerList', playerlist[room], room);
+				if(socket){
+					socket.leave(room);
+				}
+			} else {
+				console.log(user+' not found in room '+room+' when expected for removal.');
+			}
+		} else {
+			console.log('Room '+room+' not found when expected for player removal.');
+		}
+	}
+};
+
 var Setconnections = function(socket, user, sroom){//username will definitely be present or something is wrong enough to warrant throwing.
 	var username = user;
 	var socketroom = sroom;
@@ -904,11 +1024,11 @@ var Setconnections = function(socket, user, sroom){//username will definitely be
 	socket.on('Set Rooms', function(rooms, oldrooms){
 		var result = rooms.filter(function(i) {return oldrooms.indexOf(i) < 0;});//everything in rooms that isn't in oldrooms needs to be joined
 		result.forEach(function(element){
-			socket.join(element);
+			Roomer(socket, username, element, playercheck[username].permissions, true);
 		});
 		var result = oldrooms.filter(function(i) {return rooms.indexOf(i) < 0;});//everything in oldrooms that isn't in rooms needs to be left
 		result.forEach(function(element){
-			socket.leave(element);
+			Roomer(socket, username, element, playercheck[username].permissions, false);
 		});
 	});
 	socket.on('OOCmessage', function(message, color){
@@ -932,17 +1052,20 @@ var Setconnections = function(socket, user, sroom){//username will definitely be
 			toLog(msg, sendroom);
 		}
 	});
-	socket.on('Whisper', function(message, target){
-		if(username && users[target] && users[target][socketroom]){//if they logged out midwhisper or they send an invalid one somehow we need to stop that.
-			message = processHTML(message);
-			socket.emit('OOCmessage', {className: 'OOC whisper', target: target, post:message});
-			users[target][socketroom].emit('OOCmessage', {className: 'OOC whisper', username: username, post: message});
+	socket.on('Whisper', function(message, target, room){
+		if(username && users[target]){//if the user cannot be found, do not attempt.
+			var sendroom = users[target][socketroom] ? socketroom : (room || '0');//if they're in the same room, try this first, then room data, then the default room.
+			if(users[target][sendroom]){//if the sendroom still is not a room they're in, stop.
+				message = processHTML(message);
+				socket.emit('OOCmessage', {className: 'OOC whisper', target: target, post: message});
+				users[target][sendroom].emit('OOCmessage', {className: 'OOC whisper', username: username, post: message, room: socketroom});
+			}
 		}//no logging, OBVIOUSLY. What's an admin window?
 	});
 	socket.on('AFK', function(on){
 		if(playerlist[socketroom] && playerlist[socketroom][username] && on != playerlist[socketroom][username].afk){
 			playerlist[socketroom][username].afk = on;
-			io.to(socketroom).emit('PlayerList', playerlist[socketroom]);
+			io.to(socketroom).emit('PlayerList', playerlist[socketroom], socketroom);
 		}
 	});
 	socket.on('Dice', function(dice, result, color, priv){
@@ -952,12 +1075,13 @@ var Setconnections = function(socket, user, sroom){//username will definitely be
 				var total = result.reduce(function(a,b){return a+b;});
 				post +=' ('+total+')';
 			}
-			var msg = {className: 'OOC dice', post: post, color: color, room: socketroom};
+			var msg = {className: 'OOC dice', post: post, color: color, username: username, room: socketroom};
 			if(priv || playercheck[username].muted){
 				msg.post = msg.post + ' (Private)';
 				socket.emit('OOCmessage', msg);
 			} else {
 				io.to(socketroom).emit('OOCmessage', msg);
+				toLog(msg, socketroom);
 			}
 		}
 	});
@@ -1139,7 +1263,7 @@ var Setconnections = function(socket, user, sroom){//username will definitely be
 			var dirmessage = '/characters/'+encodeURIComponent(n)+'/'+d+'.html';
 			var dir = './characters/'+n+'/'+d+'.html';
 			var msg = {className: 'OOC system message', post: '<font style="color:red;">Profile set. View it '+'<a href="'+dirmessage+'" target="_blank">here.</a>'+'</font>'};
-			fs.writeFile(dir, profile.replace(/\r\n?|\n(?!([^<]+)?>)(?!([^<]+)?(<\/style>|<\/script>))/g, "<br />"), function(err){
+			fs.writeFile(dir, profile.replace(lineBreakHelper, "<br />"), function(err){
 				if(err){console.log(err);} else {socket.emit('OOCmessage', msg);}
 			});
 			if(username != n && playercheck[username].permissions == 'Admin'){
@@ -1183,7 +1307,7 @@ var Setconnections = function(socket, user, sroom){//username will definitely be
 	});
 	socket.on('Edit Default Profile', function(message){
 		if(CheckUser(username, 'Admin', true, socket)){
-			serversettings.profile = message.replace(/\r\n?|\n(?!([^<]+)?>)(?!([^<]+)?(<\/style>|<\/script>))/g, "<br />");//no HTML checking here
+			serversettings.profile = message.replace(lineBreakHelper, "<br />");//no HTML checking here
 			var msg = {className: 'OOC system message', post: '<font style="color:red;font-weight:bold">'+username+' has edited the default character profile.</font>'};
 			fs.writeFile('settings.json', JSON.stringify(serversettings), function(err){
 				if(err){console.log(err);} else {io.emit('OOCmessage', msg); adminLog(username, 'Edit Default Profile', null);}
@@ -1193,7 +1317,7 @@ var Setconnections = function(socket, user, sroom){//username will definitely be
 	socket.on('Edit World Info', function(message){
 		if(CheckUser(username, 'Admin', true, socket)){
 			var msg = {className: 'OOC system message', post: '<font style="color:red;font-weight:bold">'+username+' has edited the world info.</font>'};
-			fs.writeFile('worldinfo.html', message.replace(/\r\n?|\n(?!([^<]+)?>)(?!([^<]+)?(<\/style>|<\/script>))/g, "<br />"), function(err){
+			fs.writeFile('worldinfo.html', message.replace(lineBreakHelper, "<br />"), function(err){
 				if(err){console.log(err);} else {io.emit('OOCmessage', msg); adminLog(username, 'Edit World Info', null);}
 			});
 		}
@@ -1204,6 +1328,20 @@ var Setconnections = function(socket, user, sroom){//username will definitely be
 			fs.writeFile('settings.json', JSON.stringify(serversettings), function(err){
 				if(err){console.log(err);} else {io.emit('Title', serversettings.title); adminLog(username, 'Edit Title', null);}
 			});
+		}
+	});
+	socket.on('savefavicon', function(favicon, notice){
+		if(CheckUser(username, 'Admin', true, socket)){
+			var favf = favicon.replace(/^data:image\/png;base64,/, "");
+			var notf = favf;
+			if(notice){//we don't send without at least a favicon.
+				var notf = notice.replace(/^data:image\/png;base64,/, "");
+			}
+			fs.writeFile('./faceicons/favicon.png', favf, 'base64', function(err){if(err){console.log(err);} else {
+				fs.writeFile('./faceicons/notice.png', notf, 'base64', function(err){if(err){console.log(err);} else {
+					adminLog(username, 'Edit Favicon', null);
+				}});
+			}});
 		}
 	});
 	socket.on('AdminCommand', function(command, target){
@@ -1218,11 +1356,19 @@ var Setconnections = function(socket, user, sroom){//username will definitely be
 		}
 	});
 	socket.on('disconnect', function(){
+		if(socketroom == '0'){//remove from all the rooms we're in.
+			for (var room in playerlist){
+				if (!playerlist.hasOwnProperty(room) || room == '0') continue;
+				if(playerlist[room][username]){//any room where the user is connected
+					Roomer(null, username, room, playercheck[username].permissions, false);
+				}
+			}
+		}
 		removePlayer(username, socketroom);
 		var msg = {className: 'OOC log message', username: username, post: "has logged off", room: socketroom}
 		io.to(socketroom).emit('OOCmessage', msg);
 		toLog(msg, socketroom);
-		io.to(socketroom).emit('PlayerList', playerlist[socketroom]);
+		io.to(socketroom).emit('PlayerList', playerlist[socketroom], socketroom);
 	});
 	socket.on('save', function(settings, ret){
 		if(username){
@@ -1286,110 +1432,101 @@ io.on('connection', function(socket){
 	if(serversettings.title){
 		socket.emit('Title', serversettings.title);
 	}
-	socket.on('login', function(username, password, room, callback){
-		if(username.endsWith(' ')){
-			callback("Please do not end your username with a space.");
-			return;
-		}
+	socket.on('disconnectall', function(username, password, callback){
+		if(username.endsWith(' ')){callback("Please do not end your username with a space."); return;}
 		fs.readFile('logins.json', 'utf8', function(err, logins){
-			if(err){callback(err);} else {
-				logins = JSON.parse(logins);
-				var roomname = '0';
-				if(room && typeof room === 'string'){
-					roomname = room;
-				}
-				if(logins[username]){//valid username
-					if(users[username] && users[username][roomname]){//already on the list?
-						callback("User already logged in!");
-					} else if(logins[username].password == password){//valid login
-						addPlayer(username, socket, logins[username].permissions, logins[username].muted, roomname);
-						if(banlist.users[username]){//this is so mean.
-							commands['Ban'](username);
-							callback("You're still banned.");
-						} else {
-							//pull up user info
-							fs.readFile('./saves/'+username+'.json', 'utf8', function (err, info){
-								if(err){callback(err);} else {
-									socket.join(roomname);
-									setImmediate(function() {Setconnections(socket, username, roomname);});
-									info = JSON.parse(info);
-									callback(info);
-									if(roomname == '0'){//if we're in the main room, we join other rooms to listen.
-										Object.keys(info.settings.rooms).forEach(function(room){
-											if(typeof room === 'string'){
-												socket.join(room);
-											}
-										});
-									}
-									var msg = {className: 'OOC log message', username: username, post: "has logged on", room: roomname};
-									io.to(roomname).emit('OOCmessage', msg);
-									io.to(roomname).emit('PlayerList', playerlist[roomname]);
-									if(!room){
-										if(serversettings.rules){
-											socket.emit('OOCmessage', {className: 'OOC system message', post: '<b><u>Rules</u>:</b><br />'+serversettings.rules+'<br /><br />'});
-										}
-										if(serversettings.motd){
-											socket.emit('OOCmessage', {className: 'OOC system message', post: '<b><u>Message of the Day</u>:</b><br />'+serversettings.motd+'<br /><br />'});
-										}
-									}
-									toLog(msg, roomname);
-								}
-							});
-						}
-					} else {//invalid login
-						callback("Password does not match the given username.");
-					}
-				} else {//invalid username
-					callback(username+" is not in our list yet.");
-				}
+			if(err){callback(err); return;}
+			logins = JSON.parse(logins);
+			if(!logins[username]){callback(username+" is not in our list yet."); return;}
+			if(!users[username]){callback(username+" is not logged in."); return;}
+			if(logins[username].password != password){callback("Password does not match the given username."); return;}
+			//if all conditions are true, they have permission and reason to disconnect.
+			disconnectall(users[username]);
+			if(users[username]){delete users[username];}//if all else fails, make sure they can login.
+		});
+	});
+	socket.on('login', function(username, password, room, callback){
+		if(username.endsWith(' ')){callback("Please do not end your username with a space."); return;}
+		fs.readFile('logins.json', 'utf8', function(err, logins){
+			if(err){callback(err); return;}
+			logins = JSON.parse(logins);
+			var roomname = '0';
+			if(room && typeof room === 'string'){
+				roomname = room;
 			}
+			if(!logins[username]){callback(username+" is not in our list yet."); return;}//invalid username
+			if(users[username] && users[username][roomname]){callback("User already logged in!"); return;}//already on the list?
+			if(logins[username].password != password){callback("Password does not match the given username."); return;}//invalid login
+			addPlayer(username, socket, logins[username].permissions, logins[username].muted, roomname);
+			if(banlist.users[username]){//this is so mean.
+				commands['Ban'](username);
+				callback("You're still banned.");
+				return;
+			}
+			//pull up user info
+			fs.readFile('./saves/'+username+'.json', 'utf8', function (err, info){
+				if(err){callback(err); return;}
+				socket.join(roomname);
+				setImmediate(function() {Setconnections(socket, username, roomname);});
+				info = JSON.parse(info);
+				callback(info);
+				if(roomname == '0'){//if we're in the main room, we join other rooms to listen.
+					Object.keys(info.settings.rooms).forEach(function(room){
+						if(typeof room === 'string'){
+							Roomer(socket, username, room, logins[username].permissions, true);
+						}
+					});
+				}
+				var msg = {className: 'OOC log message', username: username, post: "has logged on", room: roomname};
+				io.to(roomname).emit('OOCmessage', msg);
+				io.to(roomname).emit('PlayerList', playerlist[roomname], roomname);
+				if(!room){
+					if(serversettings.rules){
+						socket.emit('OOCmessage', {className: 'OOC system message', post: '<b><u>Rules</u>:</b><br />'+serversettings.rules+'<br /><br />'});
+					}
+					if(serversettings.motd){
+						socket.emit('OOCmessage', {className: 'OOC system message', post: '<b><u>Message of the Day</u>:</b><br />'+serversettings.motd+'<br /><br />'});
+					}
+				}
+				toLog(msg, roomname);
+			});
 		});
 	});
 	socket.on('register', function(username, password, du, callback){
-		if(username.endsWith(' ')){
-			callback("Please do not end your username with a space.");
-			return;
-		}
+		if(username.endsWith(' ')){callback("Please do not end your username with a space."); return;}
 		fs.readFile('logins.json', 'utf8', function(err, logins){
-			if(err){callback(err);} else {
-				logins = JSON.parse(logins);
-				var loginstest = {};
-				Object.keys(logins).forEach(function(key){
-					loginstest[key.toLowerCase()] = true;
-				});//fill it with lowercased
-				if(loginstest[username.toLowerCase()]){//username in use
-					callback("Username already in use.");
-				} else {//new username
-					logins[username] = {password: password, permissions: 'Guest', muted: false};
-					fs.writeFile('./saves/'+username+'.json', JSON.stringify(userdefaults), function(err){
-						if(!err){
-							fs.writeFile('logins.json', JSON.stringify(logins), function(err){
-								if(!err){
-									fs.mkdir('./characters/'+username, function(err){
-										if(!err || err.code == 'EEXIST'){
-											socket.join('0');
-											setImmediate(function() {Setconnections(socket, username, '0');});
-											addPlayer(username, socket, 'Guest', false, '0'); //no registration on rooms
-											//create new user info
-											callback(userdefaults);
-											var msg = {className: 'OOC log message', username: username, post: "has logged on"};
-											io.to('0').emit('OOCmessage', msg);
-											io.to('0').emit('PlayerList', playerlist['0']);
-											if(serversettings.rules){
-												socket.emit('OOCmessage', {className: 'OOC system message', post: '<b><u>Rules</u>:</b><br />'+serversettings.rules+'<br /><br />'});
-											}
-											if(serversettings.motd){
-												socket.emit('OOCmessage', {className: 'OOC system message', post: '<b><u>Message of the Day</u>:</b><br />'+serversettings.motd+'<br /><br />'});
-											}
-											toLog(msg, '0');
-										} else {callback(err);}
-									});
-								} else {callback(err);}
-							});
-						} else {callback(err);}
+			if(err){callback(err); return;}
+			logins = JSON.parse(logins);
+			var loginstest = {};
+			Object.keys(logins).forEach(function(key){
+				loginstest[key.toLowerCase()] = true;
+			});//fill it with lowercased
+			if(loginstest[username.toLowerCase()]){callback("Username already in use."); return;}//username in use
+			logins[username] = {password: password, permissions: 'Guest', muted: false};
+			fs.writeFile('./saves/'+username+'.json', JSON.stringify(userdefaults), function(err){
+				if(err){callback(err); return;}
+				fs.writeFile('logins.json', JSON.stringify(logins), function(err){
+					if(err){callback(err); return;}
+					fs.mkdir('./characters/'+username, function(err){
+						if(err && err.code != 'EEXIST'){callback(err); return;}
+						socket.join('0');
+						setImmediate(function() {Setconnections(socket, username, '0');});
+						addPlayer(username, socket, 'Guest', false, '0'); //no registration on rooms
+						//create new user info
+						callback(userdefaults);
+						var msg = {className: 'OOC log message', username: username, post: "has logged on"};
+						io.to('0').emit('OOCmessage', msg);
+						io.to('0').emit('PlayerList', playerlist['0'], '0');
+						if(serversettings.rules){
+							socket.emit('OOCmessage', {className: 'OOC system message', post: '<b><u>Rules</u>:</b><br />'+serversettings.rules+'<br /><br />'});
+						}
+						if(serversettings.motd){
+							socket.emit('OOCmessage', {className: 'OOC system message', post: '<b><u>Message of the Day</u>:</b><br />'+serversettings.motd+'<br /><br />'});
+						}
+						toLog(msg, '0');
 					});
-				}
-			}
+				});
+			});
 		});
 	});
 });
